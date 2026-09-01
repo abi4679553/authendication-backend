@@ -183,7 +183,7 @@ const VerifyOtp = async (req, res) => {
         const existingUser = await Usermodel.findOne({ email });
 
         if (existingUser) {
-            return res.json({ success: false,  message: "Email already registered"});
+            return res.json({ success: false, message: "Email already registered" });
         }
 
 
@@ -193,11 +193,66 @@ const VerifyOtp = async (req, res) => {
 
     } catch (err) {
         console.log("VERIFY OTP ERROR:", err);
-        return res.json({ success: false,  message: "Server error",  error: err.message });
+        return res.json({ success: false, message: "Server error", error: err.message });
     }
-
-
 }
 
 
-module.exports = { sendOtp , VerifyOtp };
+const forgotPassword = async (req, res) => {
+    try {
+        const { email, otp, newpassword, confirmpassword } = req.body;
+
+        if (!email || !otp || !newpassword || !confirmpassword) {
+            return res.json({ success: false, message: "all fields are required " })
+        }
+
+        const userEmail = email.toLowerCase();
+
+        const otpData = await Otp.findOne({ email: userEmail });
+        console.log("OTP from DB:", otpData);
+
+
+        if (!otpData) {
+            return res.json({ success: false, message: "OTP not found" });
+        }
+
+        if (String(otpData.otp) !== String(otp)) {
+            return res.json({ success: false, message: "ivalid otp " })
+        }
+
+        if (newpassword !== confirmpassword) {
+            return res.json({ success: false, message: "Password does not match" });
+        }
+
+        const user = await Usermodel.findOne({
+            email: {
+                $regex: `^${userEmail}$`,
+                $options: "i"
+            }
+        });
+
+        console.log("Searching email:", userEmail);
+        console.log("User from DB:", user);
+
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+
+        user.password = newpassword;
+
+        await user.save();
+
+        return res.json({ success: true, message: "Password changed successfully" });
+
+
+
+
+    }
+    catch (err) {
+        console.log(err.message)
+        return res.json({ success: true, message: "network error " })
+    }
+}
+
+
+module.exports = { sendOtp, VerifyOtp, forgotPassword };
