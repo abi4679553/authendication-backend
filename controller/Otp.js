@@ -244,9 +244,6 @@ const forgotPassword = async (req, res) => {
 
         return res.json({ success: true, message: "Password changed successfully" });
 
-
-
-
     }
     catch (err) {
         console.log(err.message)
@@ -255,4 +252,49 @@ const forgotPassword = async (req, res) => {
 }
 
 
-module.exports = { sendOtp, VerifyOtp, forgotPassword };
+const login = async (req, res) => {
+    try {
+
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.json({ success: false, message: "all fields are required !" })
+        }
+
+        const user = await Usermodel.findOne({ email })
+
+        if (!user) {
+            return res.json({ success: false, message: "invalid email and password ! " })
+        }
+
+        if (user.password !== password) {
+            return res.json({ success: false, message: "Invalied email and password" })
+        }
+
+
+         const saveSession = {
+            id : String(user._id),
+            fullName : user.name,
+            email : user.email,
+            contact : user.contact,
+            role : user.role
+        }
+
+        req.session.user = saveSession 
+
+       // Save session
+        req.session.save((err) => {
+            if (err) {
+                console.log("Session save error:", err);
+                return res.json({success: false,message: "Session Error, contact your support team"});
+            }
+            return res.json({success: true,message: "Login successful",data: saveSession});
+        });
+    }
+    catch (err) {
+        return res.json({ success: false, message: " server error" })
+    }
+}
+
+
+module.exports = { sendOtp, VerifyOtp, forgotPassword ,login};
