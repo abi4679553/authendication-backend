@@ -165,7 +165,7 @@ const VerifyOtp = async (req, res) => {
         const { name, email, enteredOTP, password, contact, age, gender, address, city, state } = req.body;
 
 
-        if (!name || !email || !password || !enteredOTP || !contact || !age || !gender || !address || !city || !state) {
+        if (!name || !email || !password || !enteredOTP || !contact || !age || !gender || !address || !city || !state  ) {
             return res.json({ success: false, message: "All fields are required" });
         }
 
@@ -187,7 +187,7 @@ const VerifyOtp = async (req, res) => {
         }
 
 
-        const saveUser = await Usermodel.create({ name, email, password, contact, age, gender, address, city, state });
+        const saveUser = await Usermodel.create({ name, email, password, contact, age, gender, address, city, state , role: "user"});
 
         return res.json({ success: true, message: "OTP verification success", saveUser });
 
@@ -239,6 +239,8 @@ const forgotPassword = async (req, res) => {
         }
 
         user.password = newpassword;
+
+        user.role = "user";
 
         await user.save();
 
