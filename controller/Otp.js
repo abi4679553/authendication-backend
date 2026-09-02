@@ -165,7 +165,7 @@ const VerifyOtp = async (req, res) => {
         const { name, email, enteredOTP, password, contact, age, gender, address, city, state } = req.body;
 
 
-        if (!name || !email || !password || !enteredOTP || !contact || !age || !gender || !address || !city || !state  ) {
+        if (!name || !email || !password || !enteredOTP || !contact || !age || !gender || !address || !city || !state) {
             return res.json({ success: false, message: "All fields are required" });
         }
 
@@ -187,7 +187,7 @@ const VerifyOtp = async (req, res) => {
         }
 
 
-        const saveUser = await Usermodel.create({ name, email, password, contact, age, gender, address, city, state , role: "user"});
+        const saveUser = await Usermodel.create({ name, email, password, contact, age, gender, address, city, state, role: "user" });
 
         return res.json({ success: true, message: "OTP verification success", saveUser });
 
@@ -274,23 +274,23 @@ const login = async (req, res) => {
         }
 
 
-         const saveSession = {
-            id : String(user._id),
-            fullName : user.name,
-            email : user.email,
-            contact : user.contact,
-            role : user.role
+        const saveSession = {
+            id: String(user._id),
+            fullName: user.name,
+            email: user.email,
+            contact: user.contact,
+            role: user.role
         }
 
-        req.session.user = saveSession 
+        req.session.user = saveSession
 
-       // Save session
+        // Save session
         req.session.save((err) => {
             if (err) {
                 console.log("Session save error:", err);
-                return res.json({success: false,message: "Session Error, contact your support team"});
+                return res.json({ success: false, message: "Session Error, contact your support team" });
             }
-            return res.json({success: true,message: "Login successful",data: saveSession});
+            return res.json({ success: true, message: "Login successful", data: saveSession });
         });
     }
     catch (err) {
@@ -299,4 +299,106 @@ const login = async (req, res) => {
 }
 
 
-module.exports = { sendOtp, VerifyOtp, forgotPassword ,login};
+
+const resetPassword = async (req, res) => {
+    try {
+
+        const {email, otp, currentPassword, newPassword, confirmPassword } = req.body;
+
+        // 1. All fields check
+        if (!email || !otp || !currentPassword || !newPassword || !confirmPassword) {
+            return res.json({
+                success: false,
+                message: "All fields are required"
+            });
+        }
+
+        const userEmail = email.trim().toLowerCase();
+
+        // 2. Check OTP + Email
+        const otpData = await Otp.findOne({
+            email: userEmail
+        });
+
+        console.log("OTP from DB:", otpData);
+
+        if (!otpData) {
+            return res.json({
+                success: false,
+                message: "OTP not found"
+            });
+        }
+
+        // 3. Check OTP match
+        if (String(otpData.otp) !== String(otp)) {
+            return res.json({
+                success: false,
+                message: "Invalid OTP"
+            });
+        }
+
+        // 4. Find User by Email
+        const user = await Usermodel.findOne({
+            email: {
+                $regex: `^${userEmail}$`,
+                $options: "i"
+            }
+        });
+
+        console.log("User from DB:", user);
+
+        if (!user) {
+            return res.json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // 5. Check Old Password
+        if (user.password !== currentPassword) {
+            return res.json({
+                success: false,
+                message: "Password does not match"
+            });
+        }
+
+
+
+        // 6. Set New Password
+        user.password = newPassword;
+
+        if (newPassword !== confirmPassword) {
+            return res.json({
+                success: false,
+                message: "New password and confirm password do not match"
+            });
+        }
+
+        // 7. Save to Database
+        await user.save();
+
+        // 8. Delete OTP after successful password change
+        await Otp.deleteOne({
+            email: userEmail
+        });
+
+        return res.json({
+            success: true,
+            message: "Password changed successfully"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message
+        });
+    }
+};
+
+
+
+module.exports = { sendOtp, VerifyOtp, forgotPassword, login, resetPassword };
