@@ -6,9 +6,9 @@ const EmailNotification = require("../until/EmailNotification");
 const sendOtp = async (req, res) => {
 
     try {
-        const { email, purpose } = req.body;
+        const {email,purpose} = req.body;
 
-        console.log("email,purpose", email, purpose)
+        console.log("email,purpose",email,purpose)
 
         if (!email) {
             return res.json({ success: false, message: "Email is required. Please provide an email" })
@@ -16,19 +16,19 @@ const sendOtp = async (req, res) => {
         const userEmail = email.toLowerCase();
 
 
-        const existingUser = await Usermodel.findOne({ email: userEmail });
+        const existingUser = await Usermodel.findOne({email: userEmail});
 
 
-        if (purpose === "forgotPassword" || purpose === "resetPassword") {
-
-            if (!existingUser) {
-                return res.json({ success: false, message: "Acoount nil" })
-            }
+        if(purpose === "forgotPassword" ||  purpose === "resetPassword"){
+          
+        if (!existingUser) {
+            return res.json({ success: false, message: "Acoount nil" })
         }
-        else {
+        }
+        else{
             if (existingUser) {
-                return res.json({ success: false, message: "Acoount exits" })
-            }
+            return res.json({ success: false, message: "Acoount exits" })
+        }
         }
 
         const otp = Math.floor(
@@ -38,7 +38,7 @@ const sendOtp = async (req, res) => {
         const expiry = new Date(
             Date.now() + 5 * 60 * 1000
         );
-
+        
 
         const updateotp = await Otp.updateOne(
             {
@@ -58,7 +58,7 @@ const sendOtp = async (req, res) => {
             return res.json({ success: false, message: "Failed to save OTP. Please try again." });
         }
 
-        const html = `
+      const html = `
 <div style="margin:0;padding:0;background-color:#f4f7fb;font-family:Arial,sans-serif;">
 
     <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 15px;">
@@ -155,47 +155,145 @@ const sendOtp = async (req, res) => {
 
     } catch (err) {
         console.log("Error in send OTP:", err);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        return res.status(500).json({success: false,message: "Internal server error"});
     }
 };
 
-const VerifyOtp = async (req, res) => {
+
+
+
+
+const Verifyotp = async (req, res) => {
     try {
 
-        const { name, email, enteredOTP, password, contact, age, gender, address, city, state } = req.body;
+        const {
+            name,
+            email,
+            enteredOTP,
+            password,
+            contact,
+            age,
+            gender,
+            address,
+            city,
+            state,
+            role
+        } = req.body;
 
 
-        if (!name || !email || !password || !enteredOTP || !contact || !age || !gender || !address || !city || !state) {
-            return res.json({ success: false, message: "All fields are required" });
+        if (
+            !name ||
+            !email ||
+            !password ||
+            !enteredOTP ||
+            !contact ||
+            !age ||
+            !gender ||
+            !address ||
+            !city ||
+            !state ||
+            !role
+        ) {
+            return res.json({
+                success: false,
+                message: "All fields are required"
+            });
         }
 
-        const OtpData = await Otp.findOne({ email });
 
-        if (!OtpData) {
-            return res.json({ success: false, message: "Email not found" });
+        const UserEmail = email.trim().toLowerCase();
+
+        const UserRole = role.trim().toLowerCase();
+
+
+        // OTP find
+        const otpData = await Otp.findOne({
+            email: UserEmail
+        });
+
+
+        if (!otpData) {
+            return res.json({
+                success: false,
+                message: "Email not found"
+            });
         }
 
-        if (Number(OtpData.otp) !== Number(enteredOTP)) {
-            return res.json({ success: false, message: "Invalid Email" });
+
+        // OTP check
+        if (Number(otpData.otp) !== Number(enteredOTP)) {
+            return res.json({
+                success: false,
+                message: "Invalid OTP"
+            });
         }
 
 
-        const existingUser = await Usermodel.findOne({ email });
+        // Existing user check
+        const existingUser = await Usermodel.findOne({
+            email: UserEmail
+        });
+
 
         if (existingUser) {
-            return res.json({ success: false, message: "Email already registered" });
+            return res.json({
+                success: false,
+                message: "Email already registered"
+            });
         }
 
 
-        const saveUser = await Usermodel.create({ name, email, password, contact, age, gender, address, city, state, role: "user" });
+        // Create user
+        const saveUser = await Usermodel.create({
 
-        return res.json({ success: true, message: "OTP verification success", saveUser });
+            name,
+
+            email: UserEmail,
+
+            password,
+
+            contact,
+
+            age,
+
+            gender,
+
+            address,
+
+            city,
+
+            state,
+
+            role: UserRole
+
+        });
+
+
+        // Delete OTP after successful verification
+        await Otp.deleteOne({
+            email: UserEmail
+        });
+
+
+        return res.json({
+            success: true,
+            message: "OTP verification success",
+            saveUser
+        });
+
 
     } catch (err) {
+
         console.log("VERIFY OTP ERROR:", err);
-        return res.json({ success: false, message: "Server error", error: err.message });
+
+        return res.json({
+            success: false,
+            message: "Server error",
+            error: err.message
+        });
     }
-}
+};
+
 
 
 const forgotPassword = async (req, res) => {
@@ -303,7 +401,7 @@ const login = async (req, res) => {
 const resetPassword = async (req, res) => {
     try {
 
-        const {email, otp, currentPassword, newPassword, confirmPassword } = req.body;
+        const { email, otp, currentPassword, newPassword, confirmPassword } = req.body;
 
         // 1. All fields check
         if (!email || !otp || !currentPassword || !newPassword || !confirmPassword) {
@@ -401,4 +499,28 @@ const resetPassword = async (req, res) => {
 
 
 
-module.exports = { sendOtp, VerifyOtp, forgotPassword, login, resetPassword };
+
+// const Checkauth = async (req, res) => {
+//     try {
+
+//         if (!req.session.user) {
+//             return res.json({ success: false, message: "user is does not login!" })
+//         }
+//         return res.json({ success: true, message: "user login successfully", data: req.session.user })
+
+//     }
+//     catch (err) {
+//         console.log("checkauth error", err)
+//         return res.json({ success: false, message: "something went wrong!" })
+
+//     }
+
+// }
+
+
+
+
+
+
+
+module.exports = {  sendOtp, Verifyotp, login, resetPassword, forgotPassword };
